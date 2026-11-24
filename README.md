@@ -26,7 +26,7 @@ GitHub가 수집과 호스팅을 모두 해주므로 내 PC에는 아무것도 �
 | The Hacker News | `feeds.feedburner.com/TheHackersNews` | RSS |
 | Microsoft 보안 업데이트 | `api.msrc.microsoft.com/update-guide/rss` | 최초 공개분만 수집 (수정 이력 제외) |
 | Chrome Releases | `chromereleases.googleblog.com/feeds/posts/default` | 정식 채널 공지와 CVE가 있는 글만 |
-| GitHub Advisory Database | `api.github.com/advisories` | 검토 완료된 권고 최신 100건씩 |
+| GitHub Advisory Database | `api.github.com/advisories` | 검토 완료된 권고 최신 100건 + maven(Java/Kotlin/Android), pub(Flutter), swift(iOS) 별도 수집 |
 
 60일이 지난 항목은 자동으로 지워집니다. 기간은 `collect.py` 맨 위 `RETENTION_DAYS`에서 바꿉니다.
 

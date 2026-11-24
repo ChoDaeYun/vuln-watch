@@ -32,6 +32,8 @@ URL_MSRC = "https://api.msrc.microsoft.com/update-guide/rss"
 URL_CHROME = "https://chromereleases.googleblog.com/feeds/posts/default"
 URL_GHSA = "https://api.github.com/advisories?type=reviewed&per_page=100&sort=published&direction=desc"
 
+GHSA_EXTRA_ECOSYSTEMS = ["maven", "pub", "swift"]
+
 # 영역 분류 키워드 (소문자). 제목·요약·제품명에 들어 있으면 해당 영역으로 분류한다.
 AREA_KEYWORDS = {
     "server": [
@@ -43,6 +45,9 @@ AREA_KEYWORDS = {
         "qnap", "synology", "veeam", "zabbix", "jenkins", "gitlab", "oracle", "sap", "samba",
         "haproxy", "tomcat", "weblogic", "proxmox", "azure", "aws", "ubuntu", "red hat",
         "debian", "hypervisor", "서버", "방화벽", "라우터", "네트워크 장비",
+        "cloud", "gcp", "google cloud", "amazon web services", "ec2", "s3", "lambda", "iam",
+        "cloudflare", "terraform", "helm", "etcd", "istio", "containerd", "openstack",
+        "openshift", "rancher", "argo cd", "클라우드", "쿠버네티스", "컨테이너",
     ],
     "web": [
         "php", "wordpress", "laravel", "symfony", "node.js", "nodejs", "npm", "django", "flask",
@@ -50,12 +55,15 @@ AREA_KEYWORDS = {
         "vue", "angular", "xss", "cross-site", "sql injection", "csrf", "ssrf", "drupal",
         "joomla", "struts", "log4j", "jquery", "maven", "nuget", "golang", "rust", "crates.io",
         "tomcat", "웹", "플러그인", "plugin",
+        "jvm", "jdk", "openjdk", "jre", "kotlin", "gradle", "spring boot", "spring framework",
+        "netty", "jackson", "hibernate", "android", "android studio", "ios", "swift", "xcode",
+        "cocoapods", "flutter", "dart", "react native", "firebase", "sdk", "안드로이드", "앱 개발",
     ],
     "pc": [
         "windows", "office", "outlook", "excel", "word", "powerpoint", "chrome", "edge",
         "firefox", "safari", "macos", "ios", "android", "adobe", "acrobat", "zoom", "teams",
         "7-zip", "winrar", "browser", "한컴", "한글", "알집", "알약", "v3", "notepad++",
-        "visual studio code", "브라우저", "윈도우",
+        "visual studio code", "브라우저", "윈도우", "iphone", "ipad", "아이폰", "안드로이드",
     ],
 }
 # ────────────────────────────────
@@ -130,13 +138,16 @@ def find_cves(*texts):
     return sorted(found)
 
 
-def classify(text, always=()):
-    low = text.lower()
-    areas = [a for a, rx in AREA_RE.items() if a in always or rx.search(low)]
-    return areas
+def classify(item):
+    """영역 분류. 키워드를 바꾸면 다음 실행 때 저장된 항목에도 반영된다."""
+    if item["source"] == "Chrome Releases":
+        return ["pc"]  # 본문에 Linux 등이 언급돼도 브라우저 소식은 사내 PC 로만 분류
+    low = f"{item['title']} {item['summary']} {item['product']}".lower()
+    always = ("web",) if item["source"] == "GitHub Advisory" else ()
+    return [a for a, rx in AREA_RE.items() if a in always or rx.search(low)]
 
 
-def make_item(source, uid, title, link, date, text="", product="", cves=None, always=()):
+def make_item(source, uid, title, link, date, text="", product="", cves=None):
     """화면에 쓰는 공통 형식으로 만든다. 쓸 수 없는 항목이면 None."""
     title = clean(title)
     link = (link or "").strip()
@@ -147,18 +158,20 @@ def make_item(source, uid, title, link, date, text="", product="", cves=None, al
     if date < CUTOFF:
         return None
     summary = clean(text)
-    return {
+    item = {
         "id": f"{source}:{uid}",
         "source": source,
         "title": title,
         "link": link,
         "date": date.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "cves": cves if cves is not None else find_cves(title, summary),
-        "areas": classify(f"{title} {summary} {product}", always),
+        "areas": [],
         "kev": False,
         "product": product,
         "summary": summary[:220],
     }
+    item["areas"] = classify(item)
+    return item
 
 
 def parse_feed(raw):
@@ -269,8 +282,6 @@ def collect_chrome(known):
         item = make_item("Chrome Releases", e.get("id") or e.get("link", ""),
                          e.get("title", ""), e.get("link", "").replace("http://", "https://", 1),
                          entry_date(e), text=body, product="Google Chrome", cves=cves)
-        if item:
-            item["areas"] = ["pc"]  # 본문에 Linux 등이 언급돼도 브라우저 소식은 사내 PC 로만 분류
         items.append(item)
     return items
 
@@ -280,8 +291,17 @@ def collect_ghsa(known):
     token = os.environ.get("GITHUB_TOKEN")
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    # 전체 최신 100건에 더해, 건수가 적어 묻히기 쉬운 생태계는 따로 받는다.
+    # maven = Java/Kotlin/Android 라이브러리, pub = Flutter/Dart, swift = iOS
+    advisories = {a["ghsa_id"]: a for a in json.loads(fetch(URL_GHSA, headers))}
+    for eco in GHSA_EXTRA_ECOSYSTEMS:
+        try:
+            for a in json.loads(fetch(f"{URL_GHSA}&ecosystem={eco}", headers)):
+                advisories.setdefault(a["ghsa_id"], a)
+        except Exception as err:  # noqa: BLE001
+            print(f"   (GitHub Advisory {eco} 읽기 실패: {err})")
     items = []
-    for a in json.loads(fetch(URL_GHSA, headers)):
+    for a in advisories.values():
         if a.get("withdrawn_at"):
             continue
         pkgs = sorted({
@@ -292,11 +312,12 @@ def collect_ghsa(known):
         item = make_item(
             "GitHub Advisory", a["ghsa_id"], a.get("summary") or a["ghsa_id"], a.get("html_url", ""),
             parse_date(a.get("published_at")), product=" ".join(pkgs),
-            cves=[a["cve_id"].upper()] if a.get("cve_id") else [], always=("web",),
+            cves=[a["cve_id"].upper()] if a.get("cve_id") else [],
         )
         if item:
             item["severity"] = severity
             item["summary"] = " · ".join(x for x in (severity, ", ".join(pkgs)) if x)[:220]
+            item["areas"] = classify(item)
         items.append(item)
     return items
 
@@ -347,6 +368,8 @@ def main():
 
     cutoff = CUTOFF.strftime("%Y-%m-%dT%H:%M:%SZ")
     kept = [i for i in items.values() if i["date"] >= cutoff]
+    for i in kept:
+        i["areas"] = classify(i)
     if KEV_CVES is not None:  # KEV 수집에 실패한 회차에는 기존 표시를 그대로 둔다
         for i in kept:
             i["kev"] = any(c in KEV_CVES for c in i["cves"])
