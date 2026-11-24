@@ -2,7 +2,7 @@ name: 취약점 소식 수집
 
 on:
   schedule:
-    - cron: "17 * * * *"   # 매시 17분 (UTC 기준, 한국 시간으로도 매시 17분)
+    - cron: "23 * * * *"   # 매시 23분 (UTC 기준, 한국 시간으로도 매시 23분)
   workflow_dispatch:        # Actions 화면에서 "Run workflow" 로 직접 실행
   push:
     branches: [main]
