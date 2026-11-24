@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>취약점 소식</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #667085; --line: #e3e6eb;
+  --accent: #2456d6; --accent-soft: #e8eefc; --danger: #c62828; --danger-soft: #fdecec;
+  --pin: #9a6700; --pin-soft: #fff6dc; --chip: #eef0f3;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111418; --card: #1a1e24; --text: #e6e9ee; --muted: #98a2b3; --line: #2b313a;
+    --accent: #8fb0ff; --accent-soft: #1f2b47; --danger: #ff8a80; --danger-soft: #3a1d1d;
+    --pin: #f2cc60; --pin-soft: #33290f; --chip: #262c35;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", sans-serif;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 14px; }
+h1 { font-size: 22px; margin: 0; }
+#updated { color: var(--muted); font-size: 13px; }
+.controls {
+  position: sticky; top: 0; z-index: 5; background: var(--bg);
+  padding: 10px 0; border-bottom: 1px solid var(--line); margin-bottom: 14px;
+}
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row + .row { margin-top: 8px; }
+input[type=search], input[type=text], select {
+  font: inherit; color: var(--text); background: var(--card);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0;
+}
+input[type=search] { flex: 1 1 260px; }
+button {
+  font: inherit; color: var(--text); background: var(--card); cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px;
+}
+button:hover { border-color: var(--accent); }
+button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--card); font-weight: 600; }
+button.kev[aria-pressed=true] { background: var(--danger); border-color: var(--danger); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+details.kw { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; }
+details.kw summary { cursor: pointer; font-weight: 600; }
+details.kw .row { margin-top: 10px; }
+details.kw input { flex: 1 1 300px; }
+.hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+h2 { font-size: 15px; margin: 22px 0 8px; color: var(--muted); font-weight: 600; }
+h2.pin { color: var(--pin); }
+ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+li.item, li.group {
+  background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--line);
+  border-radius: 10px; padding: 11px 14px;
+}
+li.item.pinned { border-left-color: var(--pin); }
+li.item.kev { border-left-color: var(--danger); background: var(--danger-soft); }
+.title { font-size: 16px; font-weight: 600; color: var(--text); text-decoration: none; overflow-wrap: anywhere; }
+.title:hover { color: var(--accent); text-decoration: underline; }
+.summary { color: var(--muted); font-size: 13.5px; margin: 3px 0 0; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; font-size: 12.5px; color: var(--muted); }
+.tag { border-radius: 6px; padding: 1px 7px; background: var(--chip); color: var(--text); white-space: nowrap; }
+.tag.src { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.tag.kev { background: var(--danger); color: #fff; font-weight: 700; }
+.tag.kw { background: var(--pin-soft); color: var(--pin); font-weight: 600; }
+a.tag.cve { text-decoration: none; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+a.tag.cve:hover { outline: 1px solid var(--accent); }
+li.group > details > summary { cursor: pointer; font-weight: 600; }
+li.group ul.list { margin-top: 10px; }
+.more { display: block; margin: 14px auto 0; }
+.empty { color: var(--muted); text-align: center; padding: 40px 0; }
+footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+footer .fail { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>취약점 소식</h1>
+    <span id="updated">불러오는 중…</span>
+  </header>
+
+  <div class="controls">
+    <div class="row">
+      <input type="search" id="q" placeholder="제품명 또는 CVE 번호 검색 (예: nginx, CVE-2026-1234)" aria-label="검색">
+      <select id="source" aria-label="출처"><option value="all">모든 출처</option></select>
+    </div>
+    <div class="row" id="areas">
+      <button data-area="all" aria-pressed="true">전체</button>
+      <button data-area="server" aria-pressed="false">서버 인프라</button>
+      <button data-area="web" aria-pressed="false">웹 개발</button>
+      <button data-area="pc" aria-pressed="false">사내 PC</button>
+      <button class="kev" id="kevOnly" aria-pressed="false">공격에 악용 중만</button>
+      <span id="count" class="hint" style="margin:0 0 0 auto"></span>
+    </div>
+  </div>
+
+  <details class="kw" id="kwBox">
+    <summary>내 제품 키워드 <span id="kwCount" class="hint"></span></summary>
+    <div class="row">
+      <input type="text" id="kwInput" placeholder="쉼표로 구분: nginx, PHP, PostgreSQL, VMware, Windows, Chrome" aria-label="내 제품 키워드">
+      <button id="kwSave">저장</button>
+    </div>
+    <p class="hint">키워드가 들어간 항목은 맨 위에 따로 표시됩니다. 이 브라우저에만 저장되며 어디로도 전송되지 않습니다.</p>
+  </details>
+
+  <main id="main"></main>
+  <footer id="status"></footer>
+</div>
+
+<script>
+"use strict";
+const AREA_NAMES = { server: "서버 인프라", web: "웹 개발", pc: "사내 PC" };
+const KW_STORE = "vulnwatch.keywords";
+const PAGE = 150;        // 한 번에 그리는 줄 수
+const GROUP_MIN = 8;     // 같은 날 같은 출처가 이보다 많으면 한 줄로 접는다
+
+let items = [];
+let keywords = [];
+const state = { q: "", area: "all", source: "all", kevOnly: false, limit: PAGE };
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") node.className = v; else node.setAttribute(k, v);
+  }
+  for (const c of children) if (c != null) node.append(c);
+  return node;
+}
+
+function localDay(iso) {
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function loadKeywords() {
+  try { keywords = JSON.parse(localStorage.getItem(KW_STORE)) || []; } catch { keywords = []; }
+  if (!Array.isArray(keywords)) keywords = [];
+  document.getElementById("kwInput").value = keywords.join(", ");
+  document.getElementById("kwCount").textContent = keywords.length ? `(${keywords.length}개)` : "(아직 없음 - 눌러서 입력)";
+}
+
+function saveKeywords() {
+  const raw = document.getElementById("kwInput").value;
+  keywords = [...new Set(raw.split(/[,\n]/).map(s => s.trim()).filter(Boolean))];
+  try { localStorage.setItem(KW_STORE, JSON.stringify(keywords)); } catch { /* 저장이 막힌 브라우저에서는 이번 방문에만 적용 */ }
+  loadKeywords();
+  matchKeywords();
+  state.limit = PAGE;
+  render();
+}
+
+// 키워드는 단어의 시작에서만 맞춘다 ("PHP" 는 phpMyAdmin 에 맞고, "edge" 는 knowledge 에 안 맞는다)
+function matchKeywords() {
+  const tests = keywords.map(k => {
+    const esc = k.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return [k, new RegExp("(^|[^a-z0-9])" + esc)];
+  });
+  for (const it of items) it.matched = tests.filter(([, rx]) => rx.test(it.hay)).map(([k]) => k);
+}
+
+function visible() {
+  const terms = state.q.toLowerCase().split(/\s+/).filter(Boolean);
+  return items.filter(it =>
+    (state.area === "all" || it.areas.includes(state.area)) &&
+    (state.source === "all" || it.source === state.source) &&
+    (!state.kevOnly || it.kev) &&
+    terms.every(t => it.hay.includes(t)));
+}
+
+// 같은 날 같은 출처 항목이 너무 많으면(예: Microsoft 정기 패치) 한 줄로 접는다. 악용 중인 항목은 접지 않는다.
+function toRows(list, collapse) {
+  if (!collapse) return list.map(item => ({ item }));
+  const counts = new Map();
+  for (const it of list) counts.set(it.bucket, (counts.get(it.bucket) || 0) + 1);
+  const groups = new Map(), rows = [];
+  for (const it of list) {
+    if (it.kev || counts.get(it.bucket) <= GROUP_MIN) { rows.push({ item: it }); continue; }
+    let g = groups.get(it.bucket);
+    if (!g) { g = { source: it.source, day: it.day, items: [] }; groups.set(it.bucket, g); rows.push(g); }
+    g.items.push(it);
+  }
+  return rows;
+}
+
+function itemNode(it) {
+  const li = el("li", { class: "item" + (it.kev ? " kev" : "") + (it.matched.length ? " pinned" : "") });
+  const safe = /^https?:\/\//.test(it.link);
+  li.append(safe
+    ? el("a", { class: "title", href: it.link, target: "_blank", rel: "noopener noreferrer" }, it.title)
+    : el("span", { class: "title" }, it.title));
+  if (it.summary) li.append(el("p", { class: "summary" }, it.summary));
+  const meta = el("div", { class: "meta" });
+  if (it.kev) meta.append(el("span", { class: "tag kev" }, "공격에 악용 중"));
+  meta.append(el("span", { class: "tag src" }, it.source), el("span", {}, it.day));
+  for (const a of it.areas) meta.append(el("span", { class: "tag" }, AREA_NAMES[a] || a));
+  for (const k of it.matched) meta.append(el("span", { class: "tag kw" }, "내 제품: " + k));
+  for (const c of it.cves.slice(0, 8)) {
+    meta.append(el("a", { class: "tag cve", href: "https://nvd.nist.gov/vuln/detail/" + encodeURIComponent(c), target: "_blank", rel: "noopener noreferrer" }, c));
+  }
+  if (it.cves.length > 8) meta.append(el("span", {}, `외 ${it.cves.length - 8}건`));
+  li.append(meta);
+  return li;
+}
+
+function groupNode(g) {
+  const inner = el("ul", { class: "list" });
+  const details = el("details", {}, el("summary", {}, `${g.source} · ${g.day} · ${g.items.length.toLocaleString()}건 (눌러서 펼치기)`), inner);
+  details.addEventListener("toggle", () => {
+    if (details.open && !inner.childElementCount) inner.append(...g.items.map(itemNode));
+  });
+  return el("li", { class: "group" }, details);
+}
+
+function section(title, cls, rows, limit) {
+  const frag = document.createDocumentFragment();
+  if (title) frag.append(el("h2", { class: cls }, title));
+  const ul = el("ul", { class: "list" });
+  for (const r of rows.slice(0, limit)) ul.append(r.item ? itemNode(r.item) : groupNode(r));
+  frag.append(ul);
+  return frag;
+}
+
+function render() {
+  const main = document.getElementById("main");
+  const list = visible();
+  const collapse = !state.q.trim();
+  const pinned = list.filter(it => it.matched.length);
+  const rest = list.filter(it => !it.matched.length);
+  document.getElementById("count").textContent = `${list.length.toLocaleString()}건`;
+  main.replaceChildren();
+  if (!list.length) { main.append(el("p", { class: "empty" }, "조건에 맞는 항목이 없습니다.")); return; }
+
+  const pinRows = toRows(pinned, collapse), restRows = toRows(rest, collapse);
+  let room = state.limit;
+  if (pinRows.length) {
+    main.append(section(`내 제품 관련 (${pinned.length.toLocaleString()}건)`, "pin", pinRows, room));
+    room -= Math.min(room, pinRows.length);
+  }
+  if (restRows.length && room > 0) {
+    main.append(section(pinRows.length ? "그 밖의 소식" : "", "", restRows, room));
+  }
+  if (pinRows.length + restRows.length > state.limit) {
+    const more = el("button", { class: "more" }, "더 보기");
+    more.addEventListener("click", () => { state.limit += PAGE; render(); });
+    main.append(more);
+  }
+}
+
+function renderStatus(status) {
+  if (!status) { document.getElementById("updated").textContent = ""; return; }
+  const when = new Date(status.updated).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+  document.getElementById("updated").textContent = `마지막 수집: ${when}`;
+  const foot = document.getElementById("status");
+  foot.append("수집 상태: ");
+  status.sources.forEach((s, i) => {
+    if (i) foot.append(" · ");
+    foot.append(s.ok ? `${s.name} 정상` : el("span", { class: "fail", title: s.error || "" }, `${s.name} 실패`));
+  });
+}
+
+function bind() {
+  let timer;
+  document.getElementById("q").addEventListener("input", e => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { state.q = e.target.value; state.limit = PAGE; render(); }, 150);
+  });
+  document.getElementById("source").addEventListener("change", e => { state.source = e.target.value; state.limit = PAGE; render(); });
+  for (const b of document.querySelectorAll("#areas button[data-area]")) {
+    b.addEventListener("click", () => {
+      state.area = b.dataset.area; state.limit = PAGE;
+      for (const o of document.querySelectorAll("#areas button[data-area]")) o.setAttribute("aria-pressed", String(o === b));
+      render();
+    });
+  }
+  const kev = document.getElementById("kevOnly");
+  kev.addEventListener("click", () => {
+    state.kevOnly = !state.kevOnly; state.limit = PAGE;
+    kev.setAttribute("aria-pressed", String(state.kevOnly));
+    render();
+  });
+  document.getElementById("kwSave").addEventListener("click", saveKeywords);
+  document.getElementById("kwInput").addEventListener("keydown", e => { if (e.key === "Enter") saveKeywords(); });
+}
+
+async function start() {
+  bind();
+  loadKeywords();
+  if (!keywords.length) document.getElementById("kwBox").open = true;
+  try {
+    const res = await fetch("data.json", { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    items = (await res.json()).items;
+  } catch (e) {
+    document.getElementById("updated").textContent = "";
+    document.getElementById("main").append(el("p", { class: "empty" },
+      "data.json 을 불러오지 못했습니다. 아직 첫 수집이 끝나지 않았을 수 있습니다."));
+    return;
+  }
+  for (const it of items) {
+    it.day = localDay(it.date);
+    it.bucket = it.source + "|" + it.day;
+    it.hay = [it.title, it.summary, it.product, it.source, it.cves.join(" ")].join(" ").toLowerCase();
+  }
+  const select = document.getElementById("source");
+  for (const s of [...new Set(items.map(it => it.source))].sort()) select.append(el("option", { value: s }, s));
+  matchKeywords();
+  render();
+  try { renderStatus(await (await fetch("status.json", { cache: "no-store" })).json()); } catch { renderStatus(null); }
+}
+start();
+</script>
+</body>
+</html>

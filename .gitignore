@@ -1,0 +1,4 @@
+.idea/
+__pycache__/
+# 수집 시각·상태는 매 실행마다 바뀌므로 커밋하지 않고 배포에만 포함한다
+docs/status.json
