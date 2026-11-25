@@ -1,9 +1,7 @@
 name: 취약점 소식 수집
 
 on:
-  schedule:
-    - cron: "10 * * * *"   # 매시 10분 (UTC 기준, 한국 시간으로도 매시 10분). GitHub 사정으로 늦거나 누락될 수 있음
-  workflow_dispatch:        # Actions 화면에서 "Run workflow" 로 직접 실행
+  workflow_dispatch:        # 외부 크론(cron-job.org)이 매시 호출. Actions 화면에서 직접 실행도 가능
   push:
     branches: [main]
     paths: ["collect.py", "docs/index.html", ".github/workflows/collect.yml"]
