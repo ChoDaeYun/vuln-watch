@@ -2,7 +2,7 @@ name: 취약점 소식 수집
 
 on:
   schedule:
-    - cron: "7,23,37,52 * * * *"   # 시간당 4회 시도 (GitHub 스케줄 누락이 잦아 촘촘하게)
+    - cron: "10 * * * *"   # 시간당 4회 시도 (GitHub 스케줄 누락이 잦아 촘촘하게)
   workflow_dispatch:        # Actions 화면에서 "Run workflow" 로 직접 실행
   push:
     branches: [main]
